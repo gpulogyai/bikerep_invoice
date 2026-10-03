@@ -1,80 +1,144 @@
 import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import "./app.css";
-import type { Invoice } from "./types";
-import { blankInvoice, calculateTotals, deleteInvoice, formatMoney, loadInvoices, saveInvoice } from "./invoice";
+import type { Invoice, OwnerSettings, ShopInfo } from "./types";
+import {
+  blankInvoice,
+  deleteInvoice,
+  loadInvoices,
+  loadOwner,
+  loadShop,
+  saveInvoice,
+  saveOwner,
+  saveShop,
+} from "./invoice";
 import InvoiceForm from "./components/InvoiceForm";
 import InvoicePreview from "./components/InvoicePreview";
+import SendPanel from "./components/SendPanel";
+import ShopSettings from "./components/ShopSettings";
+import IncomePanel from "./components/IncomePanel";
+import OrdersPanel from "./components/OrdersPanel";
+import { loadLists, saveLists } from "./customLists";
+import type { CustomLists } from "./customLists";
+
+type Tab = "edit" | "send" | "orders" | "income" | "shop";
 
 export default function App() {
   const [saved, setSaved] = useState<Invoice[]>(() => loadInvoices());
   const [invoice, setInvoice] = useState<Invoice>(() => blankInvoice(saved.length));
-  const [tab, setTab] = useState<"edit" | "preview" | "saved">("edit");
-  const [status, setStatus] = useState("");
+  const [shop, setShop] = useState<ShopInfo>(() => loadShop());
+  const [tab, setTab] = useState<Tab>("edit");
+  const [message, setMessage] = useState("");
+  const [owner, setOwner] = useState<OwnerSettings>(() => loadOwner());
+  const [ownerUnlocked, setOwnerUnlocked] = useState(false);
+  const [lists, setLists] = useState<CustomLists>(() => loadLists());
 
-  const onSave = () => {
-    setSaved(saveInvoice(invoice));
-    setStatus(`Saved invoice #${invoice.invoiceNumber}`);
+  const openTab = (t: Tab) => {
+    // Leaving the Income tab locks it again so a customer handed the phone can't open it.
+    if (t !== "income") setOwnerUnlocked(false);
+    setTab(t);
   };
+
+  const persist = (next: Invoice, note: string) => {
+    setInvoice(next);
+    setSaved(saveInvoice(next));
+    setMessage(note);
+  };
+  const onSave = () => persist(invoice, `Saved invoice #${invoice.invoiceNumber}`);
   const onNew = () => {
     setInvoice(blankInvoice(saved.length));
-    setTab("edit");
-    setStatus("");
+    openTab("edit");
+    setMessage("");
+  };
+  const onShop = (next: ShopInfo) => {
+    setShop(next);
+    saveShop(next);
+  };
+  const onLists = (next: CustomLists) => {
+    setLists(next);
+    saveLists(next);
+  };
+  const onOwner = (next: OwnerSettings) => {
+    setOwner(next);
+    saveOwner(next);
+  };
+
+  const labels: Record<Tab, string> = { edit: "Edit", send: "Send", orders: `Orders (${saved.length})`,
+    income: "Income",
+    shop: "Shop",
   };
 
   return (
     <div className="app">
       <header className="topbar">
-        <h1>Bike Shop Invoices</h1>
+        <h1>{shop.name || "Bike Shop"} Invoices</h1>
         <nav role="tablist">
-          {(["edit", "preview", "saved"] as const).map((t) => (
+          {(Object.keys(labels) as Tab[]).map((t) => (
             <button
               key={t}
               role="tab"
               aria-selected={tab === t}
               className={tab === t ? "active" : ""}
-              onClick={() => setTab(t)}
+              onClick={() => openTab(t)}
             >
-              {t === "edit" ? "Edit" : t === "preview" ? "Preview" : `Saved (${saved.length})`}
+              {labels[t]}
             </button>
           ))}
         </nav>
       </header>
 
       <main>
-        {tab === "edit" && <InvoiceForm invoice={invoice} setInvoice={setInvoice} />}
-        {tab === "preview" && <InvoicePreview invoice={invoice} />}
-        {tab === "saved" && (
-          <ul className="card saved">
-            {saved.length === 0 && <li>No saved invoices yet.</li>}
-            {saved.map((inv) => (
-              <li key={inv.id}>
-                <button
-                  className="link"
-                  onClick={() => {
-                    setInvoice(inv);
-                    setTab("edit");
-                  }}
-                >
-                  #{inv.invoiceNumber} · {inv.customerName || "No name"} ·{" "}
-                  {formatMoney(calculateTotals(inv).total)}
-                </button>
-                <button
-                  className="icon"
-                  aria-label={`Delete invoice ${inv.invoiceNumber}`}
-                  onClick={() => setSaved(deleteInvoice(inv.id))}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
+        {tab === "edit" && <InvoiceForm invoice={invoice} setInvoice={setInvoice} lists={lists} onLists={onLists} />}
+        {tab === "send" && (
+          <>
+            <InvoicePreview invoice={invoice} shop={shop} />
+            <SendPanel
+              invoice={invoice}
+              shop={shop}
+              onSent={() =>
+                persist({ ...invoice, sentAt: new Date().toISOString() }, `Texted invoice #${invoice.invoiceNumber}`)
+              }
+              onPaid={(method) =>
+                persist(
+                  { ...invoice, paymentMethod: method, paidAt: method ? new Date().toISOString() : "" },
+                  method ? `Invoice #${invoice.invoiceNumber} marked paid` : "Payment cleared",
+                )
+              }
+            />
+          </>
         )}
+        {tab === "orders" && (
+          <OrdersPanel
+            orders={saved}
+            onOpen={(inv) => {
+              setInvoice(inv);
+              openTab("edit");
+            }}
+            onDelete={(id) => setSaved(deleteInvoice(id))}
+          />
+        )}
+        {tab === "income" && (
+          <IncomePanel
+            invoices={saved}
+            owner={owner}
+            onOwner={onOwner}
+            unlocked={ownerUnlocked}
+            onUnlock={setOwnerUnlocked}
+          />
+        )}
+        {tab === "shop" && <ShopSettings shop={shop} onChange={onShop} lists={lists} onLists={onLists} />}
       </main>
 
       <footer className="actions">
-        <span role="status">{status}</span>
-        <button className="secondary" onClick={onNew}>New</button>
-        {tab === "preview" && <button className="secondary" onClick={() => window.print()}>Print</button>}
+        <span role="status">{message}</span>
+        <button className="secondary" onClick={onNew}>
+          New
+        </button>
+        {tab === "send" && !Capacitor.isNativePlatform() && (
+          <button className="secondary" onClick={() => window.print()}>
+            Print
+          </button>
+        )}
         <button onClick={onSave}>Save</button>
       </footer>
     </div>

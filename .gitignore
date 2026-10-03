@@ -3,3 +3,11 @@ dist/
 .DS_Store
 *.log
 artifacts/
+
+# Generated builds and native dependencies
+build/
+ios/App/build/
+ios/App/Pods/
+
+# Local LetThemBuild session data
+.letthemchat/

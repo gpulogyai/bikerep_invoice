@@ -1,0 +1,28 @@
+PODS:
+  - Capacitor (8.5.2):
+    - CapacitorCordova
+  - CapacitorCommunityContacts (8.0.0):
+    - Capacitor
+  - CapacitorCordova (8.5.2)
+
+DEPENDENCIES:
+  - "Capacitor (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorCommunityContacts (from `../../node_modules/@capacitor-community/contacts`)"
+  - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+
+EXTERNAL SOURCES:
+  Capacitor:
+    :path: "../../node_modules/@capacitor/ios"
+  CapacitorCommunityContacts:
+    :path: "../../node_modules/@capacitor-community/contacts"
+  CapacitorCordova:
+    :path: "../../node_modules/@capacitor/ios"
+
+SPEC CHECKSUMS:
+  Capacitor: 89067779e14fb7ea56af07b4817f45d1f0c2a269
+  CapacitorCommunityContacts: 87559fd3d6d829cc38bea834ea4d2242a0995ac2
+  CapacitorCordova: 5bec5648cbd09a176ce34ce5e7b6cdabb2c8a327
+
+PODFILE CHECKSUM: 773ba394a0205bce533297bba06787915a3c1e36
+
+COCOAPODS: 1.17.0

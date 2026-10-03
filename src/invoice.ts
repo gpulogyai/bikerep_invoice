@@ -1,4 +1,5 @@
-import type { Invoice, LineItem, Totals } from "./types";
+import { CHARGE_KEYS } from "./types";
+import type { ChargeKey, Invoice, LineItem, OwnerSettings, ShopInfo, Totals } from "./types";
 
 export function newId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -7,19 +8,22 @@ export function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : 0);
 
-export function lineTotal(item: LineItem): number {
-  const qty = Number.isFinite(item.quantity) ? item.quantity : 0;
-  const price = Number.isFinite(item.unitPrice) ? item.unitPrice : 0;
-  return round2(qty * price);
+export function lineTotal(item: Pick<LineItem, "quantity" | "unitPrice">): number {
+  return round2(num(item.quantity) * num(item.unitPrice));
 }
 
-export function calculateTotals(invoice: Pick<Invoice, "lineItems" | "taxRate">): Totals {
-  const subtotal = round2(invoice.lineItems.reduce((sum, item) => sum + lineTotal(item), 0));
-  const rate = Number.isFinite(invoice.taxRate) ? invoice.taxRate : 0;
-  const tax = round2((subtotal * rate) / 100);
-  return { subtotal, tax, total: round2(subtotal + tax) };
+type TotalsInput = { lineItems: LineItem[]; taxRate: number } & Partial<Pick<Invoice, "labor" | "charges">>;
+
+export function calculateTotals(invoice: TotalsInput): Totals {
+  const parts = round2(invoice.lineItems.reduce((sum, item) => sum + lineTotal(item), 0));
+  const labor = round2(num(invoice.labor));
+  const other = round2(CHARGE_KEYS.reduce((sum, k) => sum + num(invoice.charges?.[k]), 0));
+  const subtotal = round2(parts + labor + other);
+  const tax = round2((subtotal * num(invoice.taxRate)) / 100);
+  return { parts, labor, other, subtotal, tax, total: round2(subtotal + tax) };
 }
 
 export function formatMoney(n: number): string {
@@ -31,8 +35,15 @@ export function localDate(d = new Date()): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export function emptyLineItem(): LineItem {
-  return { id: newId(), description: "", quantity: 1, unitPrice: 0 };
+export const CHARGE_LABELS: Record<ChargeKey, string> = {
+  miscMerchandise: "Misc. merchandise",
+  sublet: "Sublet repairs",
+  storage: "Storage fee",
+  wasteRemoval: "Waste removal",
+};
+
+export function emptyLineItem(description = ""): LineItem {
+  return { id: newId(), partNo: "", description, quantity: 1, unitPrice: 0, warranty: false, condition: "new" };
 }
 
 export function blankInvoice(existingCount = 0): Invoice {
@@ -40,22 +51,88 @@ export function blankInvoice(existingCount = 0): Invoice {
     id: newId(),
     invoiceNumber: String(1001 + existingCount),
     date: localDate(),
-    shopName: "Bicycle Repair Shop",
     customerName: "",
     customerPhone: "",
+    customerAddress: "",
+    customerCityStateZip: "",
+    altName: "",
+    altPhone: "",
+    customerOrderNo: "",
+    receivedAt: "",
+    promisedAt: "",
+    writtenBy: "",
     bikeDescriptions: [""],
+    bikeSerials: [""],
+    bikeBrands: [""],
+    services: [],
     serviceNotes: [""],
     lineItems: [emptyLineItem()],
+    labor: 0,
+    laborBasis: "flat",
+    charges: { miscMerchandise: 0, sublet: 0, storage: 0, wasteRemoval: 0 },
     taxRate: 0,
+    estimateChoice: "",
+    estimateAmount: 0,
+    partsDisposition: "",
+    guaranteeUntil: "",
+    authorizedBy: "",
+    sentAt: "",
+    paidAt: "",
+    paymentMethod: "",
+  };
+}
+
+/** "Trek 820 (S/N WTU123)" for each bike that has a brand or model. */
+export function bikeLabels(invoice: Invoice): string[] {
+  return invoice.bikeDescriptions
+    .map((b, i) => {
+      const serial = invoice.bikeSerials[i]?.trim();
+      return b.trim() ? (serial ? `${b.trim()} (S/N ${serial})` : b.trim()) : "";
+    })
+    .filter(Boolean);
+}
+
+/** Fills fields missing from invoices saved by older versions of the app. */
+export function normalizeInvoice(raw: Partial<Invoice> & { serialNumber?: string }): Invoice {
+  const base = blankInvoice();
+  const { serialNumber: legacySerial, ...rest } = raw;
+  const bikeDescriptions = raw.bikeDescriptions?.length ? raw.bikeDescriptions : base.bikeDescriptions;
+  // Older versions had one serial # for the whole invoice; it belongs to the first bike.
+  const serials = Array.isArray(raw.bikeSerials) ? raw.bikeSerials : [legacySerial ?? ""];
+  const bikeSerials = bikeDescriptions.map((_, i) => serials[i] ?? "");
+  const bikeBrands = bikeDescriptions.map((_, i) => raw.bikeBrands?.[i] ?? "");
+  // Older versions kept accessories as one lump charge; carry it over as a line item.
+  const { accessories: legacyAccessories, ...charges } = { ...base.charges, ...raw.charges } as Invoice["charges"] & {
+    accessories?: number;
+  };
+  // Parts and accessories used to be kept apart by a `kind`; they are one list now.
+  const lineItems = (raw.lineItems?.length ? raw.lineItems : base.lineItems).map((li) => {
+    const { kind: _, ...item } = li as LineItem & { kind?: string };
+    return { ...emptyLineItem(), ...item };
+  });
+  if (legacyAccessories) lineItems.push({ ...emptyLineItem("Accessories"), unitPrice: legacyAccessories });
+  return {
+    ...base,
+    ...rest,
+    charges,
+    lineItems,
+    services: Array.isArray(raw.services) ? raw.services : [],
+    bikeDescriptions,
+    bikeSerials,
+    bikeBrands,
+    serviceNotes: raw.serviceNotes?.length ? raw.serviceNotes : base.serviceNotes,
   };
 }
 
 const STORAGE_KEY = "bike-invoices";
+const SHOP_KEY = "bike-shop";
+const OWNER_KEY = "bike-owner";
 
 export function loadInvoices(storage: Storage = localStorage): Invoice[] {
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Invoice[]) : [];
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeInvoice) : [];
   } catch {
     return [];
   }
@@ -73,4 +150,41 @@ export function deleteInvoice(id: string, storage: Storage = localStorage): Invo
   const next = loadInvoices(storage).filter((i) => i.id !== id);
   storage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
+}
+
+export const DEFAULT_SHOP: ShopInfo = {
+  name: "Neighborhood Bike Repair",
+  address: "3601 Matterhorn Dr",
+  cityStateZip: "Plano, TX 75075",
+  phone: "(408) 569-4378",
+  zelle: "",
+  paymentLink: "",
+};
+
+export function loadShop(storage: Storage = localStorage): ShopInfo {
+  try {
+    const raw = storage.getItem(SHOP_KEY);
+    return { ...DEFAULT_SHOP, ...(raw ? (JSON.parse(raw) as Partial<ShopInfo>) : {}) };
+  } catch {
+    return DEFAULT_SHOP;
+  }
+}
+
+export function saveShop(shop: ShopInfo, storage: Storage = localStorage): void {
+  storage.setItem(SHOP_KEY, JSON.stringify(shop));
+}
+
+export const DEFAULT_OWNER: OwnerSettings = { pin: "", incomeTaxRate: 0 };
+
+export function loadOwner(storage: Storage = localStorage): OwnerSettings {
+  try {
+    const raw = storage.getItem(OWNER_KEY);
+    return { ...DEFAULT_OWNER, ...(raw ? (JSON.parse(raw) as Partial<OwnerSettings>) : {}) };
+  } catch {
+    return DEFAULT_OWNER;
+  }
+}
+
+export function saveOwner(owner: OwnerSettings, storage: Storage = localStorage): void {
+  storage.setItem(OWNER_KEY, JSON.stringify(owner));
 }
