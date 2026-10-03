@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import "./app.css";
 import type { Invoice, OwnerSettings, ShopInfo } from "./types";
 import {
-  blankInvoice,
+  newInvoice,
   deleteInvoice,
   loadInvoices,
   loadOwner,
@@ -25,7 +25,7 @@ type Tab = "edit" | "send" | "orders" | "income" | "shop";
 
 export default function App() {
   const [saved, setSaved] = useState<Invoice[]>(() => loadInvoices());
-  const [invoice, setInvoice] = useState<Invoice>(() => blankInvoice(saved.length));
+  const [invoice, setInvoice] = useState<Invoice>(() => newInvoice());
   const [shop, setShop] = useState<ShopInfo>(() => loadShop());
   const [tab, setTab] = useState<Tab>("edit");
   const [message, setMessage] = useState("");
@@ -46,7 +46,7 @@ export default function App() {
   };
   const onSave = () => persist(invoice, `Saved invoice #${invoice.invoiceNumber}`);
   const onNew = () => {
-    setInvoice(blankInvoice(saved.length));
+    setInvoice(newInvoice());
     openTab("edit");
     setMessage("");
   };

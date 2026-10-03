@@ -127,6 +127,25 @@ export function normalizeInvoice(raw: Partial<Invoice> & { serialNumber?: string
 const STORAGE_KEY = "bike-invoices";
 const SHOP_KEY = "bike-shop";
 const OWNER_KEY = "bike-owner";
+const NUMBER_KEY = "bike-invoice-high-water";
+
+function numericInvoiceNumber(value: string): number {
+  const number = /^\d+$/.test(value) ? Number(value) : 0;
+  return Number.isSafeInteger(number) && number >= 0 ? number : 0;
+}
+
+function highestInvoiceNumber(invoices: Invoice[], storage: Storage): number {
+  return invoices.reduce(
+    (highest, invoice) => Math.max(highest, numericInvoiceNumber(invoice.invoiceNumber)),
+    Math.max(1000, numericInvoiceNumber(storage.getItem(NUMBER_KEY) ?? "")),
+  );
+}
+
+export function newInvoice(storage: Storage = localStorage): Invoice {
+  const highest = highestInvoiceNumber(loadInvoices(storage), storage);
+  if (highest >= Number.MAX_SAFE_INTEGER) throw new Error("Invoice number limit reached");
+  return { ...blankInvoice(), invoiceNumber: String(highest + 1) };
+}
 
 export function loadInvoices(storage: Storage = localStorage): Invoice[] {
   try {
@@ -142,12 +161,16 @@ export function saveInvoice(invoice: Invoice, storage: Storage = localStorage): 
   const all = loadInvoices(storage);
   const idx = all.findIndex((i) => i.id === invoice.id);
   const next = idx >= 0 ? all.map((i) => (i.id === invoice.id ? invoice : i)) : [...all, invoice];
+  storage.setItem(NUMBER_KEY, String(highestInvoiceNumber(next, storage)));
   storage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
 }
 
 export function deleteInvoice(id: string, storage: Storage = localStorage): Invoice[] {
-  const next = loadInvoices(storage).filter((i) => i.id !== id);
+  const all = loadInvoices(storage);
+  // Preserve legacy numbers before removing even the highest remaining invoice.
+  storage.setItem(NUMBER_KEY, String(highestInvoiceNumber(all, storage)));
+  const next = all.filter((i) => i.id !== id);
   storage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
 }

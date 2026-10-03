@@ -7,6 +7,7 @@ import {
   emptyLineItem,
   lineTotal,
   loadInvoices,
+  newInvoice,
   loadShop,
   saveInvoice,
   saveShop,
@@ -155,6 +156,39 @@ describe("owner income", () => {
       unpaidCount: 1,
       unpaid: 80,
     });
+  });
+});
+
+describe("invoice numbering", () => {
+  it("starts at 1001 and advances from saved numbers, not their count", () => {
+    expect(newInvoice().invoiceNumber).toBe("1001");
+    saveInvoice({ ...blankInvoice(), invoiceNumber: "1050" });
+    saveInvoice({ ...blankInvoice(), invoiceNumber: "1001" });
+    expect(newInvoice().invoiceNumber).toBe("1051");
+  });
+
+  it("does not reuse the highest number after deletion or deleting all invoices", () => {
+    const low = { ...blankInvoice(), invoiceNumber: "1001" };
+    const high = { ...blankInvoice(), invoiceNumber: "1002" };
+    saveInvoice(low);
+    saveInvoice(high);
+    deleteInvoice(high.id);
+    expect(newInvoice().invoiceNumber).toBe("1003");
+    deleteInvoice(low.id);
+    expect(newInvoice().invoiceNumber).toBe("1003");
+  });
+
+  it("preserves legacy numbers when deleting before the first new save", () => {
+    const legacy = { ...blankInvoice(), invoiceNumber: "1200" };
+    localStorage.setItem("bike-invoices", JSON.stringify([legacy]));
+    deleteInvoice(legacy.id);
+    expect(newInvoice().invoiceNumber).toBe("1201");
+  });
+
+  it("ignores nonnumeric numbers and does not advance for unsaved drafts", () => {
+    saveInvoice({ ...blankInvoice(), invoiceNumber: "custom-9999" });
+    expect(newInvoice().invoiceNumber).toBe("1001");
+    expect(newInvoice().invoiceNumber).toBe("1001");
   });
 });
 
