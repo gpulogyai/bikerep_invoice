@@ -32,7 +32,7 @@ export async function pickContact(): Promise<PickedContact | null> {
     });
     if (!contact) return null;
     const phones = contact.phones ?? [];
-    const phone = phones.find((p) => p.type === PhoneType.Mobile) ?? phones.find((p) => p.isPrimary) ?? phones[0];
+    const phone = phones.find((p) => (p.type === PhoneType.Mobile || String(p.type).toLowerCase() === "iphone")) ?? phones.find((p) => p.isPrimary) ?? phones[0];
     const addr = contact.postalAddresses?.[0];
     const name =
       contact.name?.display || [contact.name?.given, contact.name?.family].filter(Boolean).join(" ");

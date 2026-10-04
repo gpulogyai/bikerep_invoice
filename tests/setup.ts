@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
 // Node 25+ ships its own global `localStorage`, which is undefined unless Node is started with
@@ -23,3 +23,14 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
 });
+
+// jsdom has no LockManager. Serialize all test mutations like the production Web Lock.
+let tail: Promise<unknown> = Promise.resolve();
+Object.defineProperty(navigator, "locks", { configurable: true, value: {
+  request: (_name: string, callback: () => unknown) => {
+    const result = tail.then(callback);
+    tail = result.catch(() => undefined);
+    return result;
+  },
+}});
+beforeEach(() => { vi.spyOn(window, "confirm").mockReturnValue(true); });
