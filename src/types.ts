@@ -61,6 +61,8 @@ export interface Invoice {
   authorizedBy: string;
   sentAt: string;
   paidAt: string;
+  /** Immutable totals captured when payment is recorded. */
+  paymentTotals?: Totals;
   paymentMethod: "" | PaymentMethod;
 }
 

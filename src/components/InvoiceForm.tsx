@@ -17,7 +17,7 @@ interface Props {
 
 type ListKey = "serviceNotes";
 type TextKey = {
-  [K in keyof Invoice]: Invoice[K] extends string ? K : never;
+  [K in keyof Invoice]-?: Invoice[K] extends string ? K : never;
 }[keyof Invoice];
 
 const OTHER = "__other";

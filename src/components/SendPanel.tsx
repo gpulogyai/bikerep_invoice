@@ -21,22 +21,26 @@ export default function SendPanel({ invoice, shop, onSent, onPaid }: Props) {
   const [method, setMethod] = useState<PaymentMethod>(invoice.paymentMethod || "zelle");
   const phoneOk = smsNumber(invoice.customerPhone).replace("+", "").length >= 10;
   const payOk = Boolean(shop.zelle.trim() || shop.paymentLink.trim());
-  const total = formatMoney(calculateTotals(invoice).total);
+  const total = formatMoney((invoice.paidAt ? invoice.paymentTotals ?? calculateTotals(invoice) : calculateTotals(invoice)).total);
 
   return (
     <section className="card send" aria-label="Send and payment">
       <h3>Send to customer</h3>
       {!phoneOk && <p className="warn">Add the customer's phone number on the Edit tab.</p>}
-      {!payOk && <p className="warn">Add your Zelle contact or a payment link on the Shop tab so the customer knows how to pay.</p>}
+      {!invoice.paidAt && !payOk && <p className="warn">Add your Zelle contact or a payment link on the Shop tab so the customer knows how to pay.</p>}
       <a
         className={`button${phoneOk ? "" : " disabled"}`}
         href={phoneOk ? smsHref(shop, invoice) : undefined}
         aria-disabled={!phoneOk}
-        onClick={(e) => (phoneOk ? onSent() : e.preventDefault())}
+        onClick={(e) => { if (!phoneOk) e.preventDefault(); }}
       >
-        Text invoice ({total}) to {invoice.customerPhone || "customer"}
+        Open {invoice.paidAt ? "receipt" : "invoice"} ({total}) in Messages to {invoice.customerPhone || "customer"}
       </a>
-      {invoice.sentAt && <p className="muted">Sent {new Date(invoice.sentAt).toLocaleString()}</p>}
+      <p className="muted">This opens a draft in Messages; the app cannot tell whether you sent it. After sending, confirm below.</p>
+      <button type="button" className="secondary" disabled={!phoneOk} onClick={onSent}>
+        Confirm invoice sent
+      </button>
+      {invoice.sentAt && <p className="muted">Marked sent {new Date(invoice.sentAt).toLocaleString()}</p>}
       <details>
         <summary>Message text</summary>
         <pre data-testid="message">{invoiceMessage(shop, invoice)}</pre>

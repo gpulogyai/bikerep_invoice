@@ -54,7 +54,7 @@ export function summarizeIncome(invoices: Invoice[], from: string, to: string, i
     unpaid: 0,
   };
   for (const inv of invoices) {
-    const t = calculateTotals(inv);
+    const t = inv.paidAt ? inv.paymentTotals ?? calculateTotals(inv) : calculateTotals(inv);
     if (inv.paidAt) {
       if (!inRange(localDate(new Date(inv.paidAt)), from, to)) continue;
       s.paidCount += 1;

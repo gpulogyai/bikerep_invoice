@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../src/App";
-import { blankInvoice, emptyLineItem, saveInvoice } from "../src/invoice";
+import { blankInvoice, emptyLineItem, saveInvoice, normalizeInvoice } from "../src/invoice";
 import { orderForAI, searchOrders, unpaidSummary } from "../src/orders";
 import { askAboutOrders } from "../src/askAI";
 import type { Invoice } from "../src/types";
@@ -37,7 +37,7 @@ const rhythm = order(1, {
 
 describe("searchOrders", () => {
   it("lists newest first when the query is empty", () => {
-    expect(searchOrders([jordan, rhythm], "").map((o) => o.invoiceNumber)).toEqual(["1002", "1001"]);
+    expect(searchOrders([normalizeInvoice(jordan), normalizeInvoice(rhythm)], "").map((o) => o.invoiceNumber)).toEqual(["1002", "1001"]);
   });
 
   it("matches name, invoice #, bike, serial, service, part and status, all words required", () => {
@@ -102,7 +102,7 @@ describe("Orders tab", () => {
     await user.clear(box);
     await user.type(box, "Who hasn't paid?");
     await user.click(screen.getByRole("button", { name: "Ask" }));
-    expect(askAboutOrders).toHaveBeenCalledWith("Who hasn't paid?", [jordan, rhythm], "");
+    expect(askAboutOrders).toHaveBeenCalledWith("Who hasn't paid?", [normalizeInvoice(jordan), normalizeInvoice(rhythm)], "");
     expect(within(screen.getByLabelText("AI answer")).getByText("Rhythm hasn't paid yet.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /#1002 · Rhythm/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /#1001/ })).not.toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("Income tab Ask", () => {
     const [question, orders, context] =
       vi.mocked(askAboutOrders).mock.calls[vi.mocked(askAboutOrders).mock.calls.length - 1];
     expect(question).toBe("What did I make?");
-    expect(orders).toEqual([jordan]);
+    expect(orders).toEqual([normalizeInvoice(jordan)]);
     expect(context).toContain("All time: 1 paid, net sales $36.00");
     expect(within(screen.getByLabelText("AI answer")).getByText("You made $36.00 this month.")).toBeInTheDocument();
 

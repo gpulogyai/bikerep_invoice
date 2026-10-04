@@ -18,7 +18,7 @@ export function paymentLinkFor(shop: ShopInfo, invoice: Invoice): string {
 }
 
 export function invoiceMessage(shop: ShopInfo, invoice: Invoice): string {
-  const t = calculateTotals(invoice);
+  const t = invoice.paidAt ? invoice.paymentTotals ?? calculateTotals(invoice) : calculateTotals(invoice);
   const bikes = bikeLabels(invoice);
   const work = [...invoice.services, ...invoice.serviceNotes.filter((n) => n.trim())];
   const parts = invoice.lineItems.filter((li) => li.description.trim() || lineTotal(li) !== 0);
@@ -35,14 +35,17 @@ export function invoiceMessage(shop: ShopInfo, invoice: Invoice): string {
   lines.push(`Parts & accessories ${formatMoney(t.parts)} | Labor ${formatMoney(t.labor)}`);
   if (t.other) lines.push(`Other charges ${formatMoney(t.other)}`);
   if (t.tax) lines.push(`Tax ${formatMoney(t.tax)}`);
-  lines.push(`TOTAL DUE: ${formatMoney(t.total)}`);
+  if (invoice.paidAt) {
+    lines.push(`PAYMENT RECEIVED: ${formatMoney(t.total)} (${invoice.paymentMethod || "paid"}, ${invoice.paidAt.slice(0, 10)})`);
+    lines.push("BALANCE DUE: $0.00");
+  } else lines.push(`TOTAL DUE: ${formatMoney(t.total)}`);
   lines.push("");
 
   const link = paymentLinkFor(shop, invoice);
-  if (shop.zelle.trim()) {
+  if (!invoice.paidAt && shop.zelle.trim()) {
     lines.push(`Pay with Zelle to ${shop.zelle.trim()} (memo: Invoice ${invoice.invoiceNumber})`);
   }
-  if (link) lines.push(`${shop.zelle.trim() ? "Or pay" : "Pay"} online: ${link}`);
+  if (!invoice.paidAt && link) lines.push(`${shop.zelle.trim() ? "Or pay" : "Pay"} online: ${link}`);
   lines.push(`Thank you! ${shop.phone}`.trim());
   return lines.join("\n");
 }

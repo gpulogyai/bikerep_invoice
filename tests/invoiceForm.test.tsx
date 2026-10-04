@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../src/App";
+import { loadInvoices } from "../src/invoice";
 
 vi.mock("../src/contacts", () => ({
   canPickContact: () => true,
@@ -132,7 +133,7 @@ describe("invoice app", () => {
     await user.type(labor, "60");
 
     await user.click(screen.getByRole("tab", { name: "Send" }));
-    const send = screen.getByRole("link", { name: /Text invoice \(\$159\.00\) to 347 828-5828/ });
+    const send = screen.getByRole("link", { name: /Open invoice \(\$159\.00\) in Messages to 347 828-5828/ });
     const href = send.getAttribute("href")!;
     expect(href.startsWith("sms:+13478285828?&body=")).toBe(true);
     const body = decodeURIComponent(href.split("body=")[1]);
@@ -142,7 +143,13 @@ describe("invoice app", () => {
 
     send.addEventListener("click", (e) => e.preventDefault());
     await user.click(send);
-    expect(screen.getByRole("status")).toHaveTextContent("Texted invoice #1001");
+    // Cancelling or failing the OS handoff must not record a sent invoice.
+    expect(loadInvoices()).toHaveLength(0);
+    expect(screen.getByRole("status")).not.toHaveTextContent(/sent|Texted/);
+    expect(screen.getByText(/the app cannot tell whether you sent it/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm invoice sent" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Invoice #1001 marked sent");
+    expect(loadInvoices()[0].sentAt).toBeTruthy();
 
     await user.selectOptions(screen.getByLabelText("Payment method"), "zelle");
     await user.click(screen.getByRole("button", { name: "Mark paid" }));
@@ -157,7 +164,11 @@ describe("invoice app", () => {
     render(<App />);
     await user.click(screen.getByRole("tab", { name: "Send" }));
     expect(screen.getByText("Add the customer's phone number on the Edit tab.")).toBeInTheDocument();
-    expect(screen.getByText(/Text invoice/).closest("a")).not.toHaveAttribute("href");
+    expect(screen.getByText(/Open invoice/).closest("a")).not.toHaveAttribute("href");
+    expect(screen.getByRole("button", { name: "Confirm invoice sent" })).toBeDisabled();
+    await user.click(screen.getByText(/Open invoice/));
+    await user.click(screen.getByRole("button", { name: "Confirm invoice sent" }));
+    expect(loadInvoices()).toHaveLength(0);
   });
 
   it("fills the customer from phone contacts", async () => {

@@ -31,7 +31,7 @@ function ordersText(invoices: Invoice[], budget: number): { text: string; includ
   // Newest first, so the orders that fit are the recent ones.
   for (const inv of [...invoices].reverse()) {
     const block = orderForAI(inv);
-    if (used + block.length > budget) break;
+    if (used + block.length + 2 > budget) continue;
     blocks.push(block);
     used += block.length + 2;
   }
@@ -39,14 +39,18 @@ function ordersText(invoices: Invoice[], budget: number): { text: string; includ
 }
 
 export function buildPrompt(question: string, invoices: Invoice[], context = "", budget = ORDER_CHAR_BUDGET): string {
-  const { text, included } = ordersText(invoices, budget);
+  budget = Math.max(200, budget);
+  question = question.slice(0, Math.floor(budget / 5));
+  context = context.slice(0, Math.floor(budget / 5));
+  const summary = invoices.length ? unpaidSummary(invoices).slice(0, Math.floor(budget / 5)) : "";
+  const { text, included } = ordersText(invoices, Math.max(0, budget - question.length - context.length - summary.length - 200));
   const note =
     invoices.length === 0
       ? "(no orders saved yet)"
       : included < invoices.length
         ? `(the ${included} most recent of ${invoices.length} orders)\n${text}`
         : text;
-  const summary = invoices.length ? unpaidSummary(invoices) : "";
+
   return [`Today is ${localDate()}.`, `Orders:\n${note}`, context, summary, `Question: ${question}`]
     .filter(Boolean)
     .join("\n\n");
@@ -66,7 +70,7 @@ export async function askAboutOrders(question: string, invoices: Invoice[], cont
       });
       return {
         answer: reply.answer,
-        invoiceNumbers: (reply.invoiceNumbers ?? []).map((n) => n.replace(/\D/g, "")),
+        invoiceNumbers: (reply.invoiceNumbers ?? []).map(n => ordersIdentifier(n, invoices)),
       };
     } catch (e) {
       if ((e as { code?: string }).code !== "context" || budget < 1000) throw e;
@@ -84,4 +88,9 @@ export function explainAIError(error: unknown): string {
   // In a web browser there is no native plugin to call.
   if (code === "UNIMPLEMENTED") return "Asking questions needs the iPhone app with Apple Intelligence turned on.";
   return message || "Something went wrong asking Apple Intelligence.";
+}
+
+function ordersIdentifier(value: string, invoices: Invoice[]): string {
+  const trimmed = value.trim();
+  return invoices.some(i => i.invoiceNumber === trimmed) ? trimmed : trimmed.replace(/^#/, "");
 }
