@@ -20,10 +20,11 @@ describe("storage safety", () => {
     expect(() => deleteInvoice(good.id)).toThrow(/damaged/);
     expect(exportInvoiceBackup()).toBe(raw);
   });
-  it("rejects simultaneous conflicting numbers under the shared lock", async () => {
-    const results = await Promise.allSettled([saveInvoiceSafely(blankInvoice()), saveInvoiceSafely(blankInvoice())]);
-    expect(results.map(r => r.status)).toEqual(["fulfilled", "rejected"]);
-    expect(loadInvoices()).toHaveLength(1);
+  it("allocates the next free number when two tabs save the same new number", async () => {
+    const results = await Promise.all([saveInvoiceSafely(blankInvoice()), saveInvoiceSafely(blankInvoice())]);
+    expect(loadInvoices()).toHaveLength(2);
+    const numbers = results[results.length - 1].map(i => i.invoiceNumber);
+    expect(numbers.sort()).toEqual(["1001", "1002"]);
   });
   it("does not lose simultaneous non-conflicting invoices", async () => {
     await Promise.all([saveInvoiceSafely(blankInvoice()), saveInvoiceSafely(blankInvoice(1))]);

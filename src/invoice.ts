@@ -235,8 +235,14 @@ export function saveInvoice(invoice: Invoice, storage: Storage = localStorage): 
   const previous = all[idx];
   if (previous?.paidAt && invoice.paidAt) invoice = { ...invoice, paidAt: previous.paidAt, paymentMethod: previous.paymentMethod, paymentTotals: previous.paymentTotals ?? calculateTotals(previous) };
   else invoice = { ...invoice, paymentTotals: invoice.paidAt ? calculateTotals(invoice) : undefined };
-  if (all.some(i => i.id !== invoice.id && i.invoiceNumber === invoice.invoiceNumber))
-    throw new Error(`Invoice #${invoice.invoiceNumber} already exists. Choose a different number.`);
+  if (all.some(i => i.id !== invoice.id && i.invoiceNumber === invoice.invoiceNumber)) {
+    if (idx >= 0) throw new Error(`Invoice #${invoice.invoiceNumber} already exists. Choose a different number.`);
+    // New invoice whose pre-assigned number was taken since (e.g. two tabs opened New):
+    // allocate the next free number here, inside the lock, so both saves succeed.
+    const highest = highestInvoiceNumber(all, storage);
+    if (highest >= Number.MAX_SAFE_INTEGER) throw new Error("Invoice number limit reached");
+    invoice = { ...invoice, invoiceNumber: String(highest + 1) };
+  }
   const next = idx >= 0 ? all.map((i) => (i.id === invoice.id ? invoice : i)) : [...all, invoice];
   storage.setItem(NUMBER_KEY, String(highestInvoiceNumber(next, storage)));
   storage.setItem(STORAGE_KEY, JSON.stringify(next));
