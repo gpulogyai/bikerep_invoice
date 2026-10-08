@@ -151,7 +151,7 @@ describe("Income tab Ask", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("tab", { name: "Income" }));
-    await user.click(screen.getByRole("button", { name: "Unlock with Face ID" }));
+    expect(screen.queryByRole("button", { name: "Unlock with Face ID" })).not.toBeInTheDocument();
 
     expect(screen.queryByLabelText("Ask about your income")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ask" }));

@@ -149,7 +149,7 @@ export default function App() {
 
         {tab === "edit" && <>
           {invoice.paidAt && <p role="note">Paid invoices are locked. Undo payment on Send before correcting an invoice.</p>}
-          <fieldset disabled={Boolean(invoice.paidAt)} style={{ border: 0, padding: 0 }}><InvoiceForm invoice={invoice} setInvoice={setInvoice} lists={lists} onLists={onLists} /></fieldset>
+          <fieldset disabled={Boolean(invoice.paidAt)} style={{ border: 0, padding: 0 }}><InvoiceForm key={invoice.id} invoice={invoice} setInvoice={setInvoice} lists={lists} onLists={onLists} /></fieldset>
         </>}
         {tab === "send" && (
           <>
@@ -193,7 +193,7 @@ export default function App() {
           />
         )}
         {tab === "income" && (!owner.faceIDEnabled || access.unlocked ? (
-          <IncomePanel invoices={saved} owner={owner} onLock={owner.faceIDEnabled ? access.lock : undefined} />
+          <IncomePanel invoices={saved} owner={owner} shop={shop} onLock={owner.faceIDEnabled ? access.lock : undefined} />
         ) : <FaceIDGate authenticating={access.authenticating} error={access.error} onUnlock={() => void access.unlock()} />)}
         {tab === "settings" && <SettingsPanel shop={shop} onShop={onShop} lists={lists} onLists={onLists}
           owner={owner} onOwner={onOwner} access={access} onBackup={backup} onImport={importBackup} />}

@@ -33,6 +33,7 @@ const unlock = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe("Face ID access", () => {
+  beforeEach(() => saveOwner({ incomeTaxRate: 0, faceIDEnabled: true }));
   it("fails closed in browsers and does not call the native plugin", async () => {
     vi.mocked(Capacitor.getPlatform).mockReturnValue("web");
     expect((await faceIDStatus()).available).toBe(false);
@@ -94,14 +95,86 @@ describe("Face ID access", () => {
   });
 });
 
+describe("optional Face ID setting", () => {
+  const openSettings = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    return screen.getByRole("switch", { name: "Require Face ID for Income" });
+  };
+  it("defaults off and opens Income and tax settings without authentication", async () => {
+    expect(loadOwner()).toEqual({ incomeTaxRate: 0, faceIDEnabled: false });
+    const user = userEvent.setup(); render(<App />); await openIncome(user);
+    expect(screen.getByTestId("collected")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Lock now" })).not.toBeInTheDocument();
+    expect(await openSettings(user)).not.toBeChecked();
+    expect(screen.getByLabelText("Set aside for income tax (%)")).toBeInTheDocument();
+    expect(FaceID.authenticate).not.toHaveBeenCalled();
+  });
+  it("verifies before enabling, persists across remounts, and requires a fresh match to disable", async () => {
+    const user = userEvent.setup(); const view = render(<App />);
+    await user.click(await openSettings(user));
+    await waitFor(() => expect(loadOwner().faceIDEnabled).toBe(true));
+    expect(screen.queryByLabelText("Set aside for income tax (%)")).not.toBeInTheDocument();
+    view.unmount(); render(<App />); await openIncome(user);
+    expect(screen.queryByTestId("collected")).not.toBeInTheDocument();
+    const toggle = await openSettings(user); expect(toggle).toBeChecked();
+    vi.mocked(FaceID.authenticate).mockRejectedValueOnce(new Error("Face ID was cancelled."));
+    await user.click(toggle);
+    expect(await screen.findByRole("alert")).toHaveTextContent("cancelled");
+    expect(loadOwner().faceIDEnabled).toBe(true);
+    await user.click(toggle);
+    await waitFor(() => expect(loadOwner().faceIDEnabled).toBe(false));
+    await openIncome(user); expect(screen.getByTestId("collected")).toBeInTheDocument();
+    expect(FaceID.authenticate).toHaveBeenCalledTimes(3);
+  });
+  it("keeps protection off when opting in is cancelled", async () => {
+    vi.mocked(FaceID.authenticate).mockRejectedValueOnce(new Error("Face ID was cancelled."));
+    const user = userEvent.setup(); render(<App />); await user.click(await openSettings(user));
+    expect(await screen.findByRole("alert")).toHaveTextContent("cancelled");
+    expect(loadOwner().faceIDEnabled).toBe(false);
+    expect(screen.getByLabelText("Set aside for income tax (%)")).toBeInTheDocument();
+  });
+  it.each(["navigation", "background"])("ignores a late opt-in after %s", async reason => {
+    let resolve!: (result: { authenticated: boolean }) => void;
+    vi.mocked(FaceID.authenticate).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    const user = userEvent.setup(); render(<App />); const toggle = await openSettings(user);
+    await user.click(toggle); expect(toggle).toBeDisabled();
+    expect(screen.getByLabelText("Set aside for income tax (%)")).toBeDisabled();
+    if (reason === "navigation") await openIncome(user);
+    else act(() => onLock({ epoch: 3 }));
+    await act(async () => { resolve({ authenticated: true }); });
+    expect(loadOwner().faceIDEnabled).toBe(false);
+    if (reason === "navigation") expect(screen.getByTestId("collected")).toBeInTheDocument();
+  });
+  it("does not change the preference if saving fails", async () => {
+    const user = userEvent.setup(); render(<App />); const toggle = await openSettings(user);
+    const setItem = localStorage.setItem.bind(localStorage);
+    const spy = vi.spyOn(localStorage, "setItem").mockImplementation((key, value) => {
+      if (key === "bike-owner") throw new Error("Storage full");
+      setItem(key, value);
+    });
+    try {
+      await user.click(toggle);
+      expect(await screen.findByRole("alert")).toHaveTextContent("could not be saved");
+      expect(toggle).not.toBeChecked(); expect(loadOwner().faceIDEnabled).toBe(false);
+    } finally { spy.mockRestore(); }
+  });
+  it("keeps the switch off in browsers with no native authentication", async () => {
+    vi.mocked(Capacitor.getPlatform).mockReturnValue("web");
+    const user = userEvent.setup(); render(<App />); const toggle = await openSettings(user);
+    await user.click(toggle);
+    expect(await screen.findByRole("alert")).toHaveTextContent("installed iPhone");
+    expect(toggle).not.toBeChecked(); expect(FaceID.authenticate).not.toHaveBeenCalled();
+  });
+});
+
 describe("owner settings migration", () => {
   it("removes the old plaintext PIN and preserves the tax rate", () => {
     localStorage.setItem("bike-owner", JSON.stringify({ pin: "4321", incomeTaxRate: 25 }));
     localStorage.setItem("bike-invoices", "[]");
-    expect(loadOwner()).toEqual({ incomeTaxRate: 25 });
-    expect(JSON.parse(localStorage.getItem("bike-owner")!)).toEqual({ incomeTaxRate: 25 });
+    expect(loadOwner()).toEqual({ incomeTaxRate: 25, faceIDEnabled: false });
+    expect(JSON.parse(localStorage.getItem("bike-owner")!)).toEqual({ incomeTaxRate: 25, faceIDEnabled: false });
     expect(localStorage.getItem("bike-invoices")).toBe("[]");
-    saveOwner({ incomeTaxRate: 30 });
+    saveOwner({ incomeTaxRate: 30, faceIDEnabled: false });
     expect(localStorage.getItem("bike-owner")).not.toContain("pin");
   });
   it.each([null, [], { incomeTaxRate: "25" }, { incomeTaxRate: -10 }, { incomeTaxRate: 200 }])("normalizes owner settings %j", value => {

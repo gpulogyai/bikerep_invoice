@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { OwnerSettings, ShopInfo } from "../types";
 import type { CustomLists } from "../customLists";
 import ShopSettings from "./ShopSettings";
+import NumberInput from "./NumberInput";
 import FaceIDGate from "./FaceIDGate";
 import type { useIncomeAccess } from "../useIncomeAccess";
 
@@ -43,17 +44,14 @@ export default function SettingsPanel({ shop, onShop, lists, onLists, owner, onO
       {!owner.faceIDEnabled || access.unlocked ? <>
         {owner.faceIDEnabled && access.error && <p role="alert">{access.error}</p>}
         <label>Set aside for income tax (%)
-          <input type="number" inputMode="decimal" min="0" max="100" step="0.5" value={owner.incomeTaxRate}
-            onChange={e => {
-              const value = Number(e.target.value);
-              onOwner({ ...owner, incomeTaxRate: Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0 });
-            }} />
+          <NumberInput inputMode="decimal" min="0" max="100" step="0.5" disabled={access.authenticating} value={owner.incomeTaxRate}
+            onValueChange={value => onOwner({ ...owner, incomeTaxRate: Math.max(0, Math.min(100, value)) })} />
         </label>
         <p className="hint">An estimate on net sales before expenses. Confirm the rate with your accountant.</p>
         {owner.faceIDEnabled && <button type="button" className="secondary" onClick={access.lock}>Lock owner settings</button>}
       </> : <FaceIDGate authenticating={access.authenticating} error={access.error} onUnlock={() => void access.unlock()} />}
     </section>
-    <ShopSettings shop={shop} onShop={onShop} lists={lists} onLists={onLists} />
+    <ShopSettings shop={shop} onChange={onShop} lists={lists} onLists={onLists} />
     <section className="card">
       <h3>Invoice backup</h3>
       <p>These records live on this device, not GitHub. Export regularly. Import merges non-overlapping records; it never overwrites existing invoices.</p>

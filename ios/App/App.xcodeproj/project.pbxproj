@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D10000000000000000000001 /* FaceIDPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* FaceIDPlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4691B6C7DFE2F5E3389AEA39 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 001055140CB8B451CF675BC1 /* PrivacyInfo.xcprivacy */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
@@ -18,11 +18,12 @@
 		9582B6852FE996820072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6842FE996800072D4E8 /* SceneDelegate.swift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 		A709A6426A76C0AC1A00E56D /* AppleIntelligencePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28465FB6C63AF9FEF86419C /* AppleIntelligencePlugin.swift */; };
+		D10000000000000000000001 /* FaceIDPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* FaceIDPlugin.swift */; };
 		FB96A9734CBBBD3C22637738 /* BridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6BC4FB63B66F2747D5BE349 /* BridgeViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		D10000000000000000000002 /* FaceIDPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceIDPlugin.swift; sourceTree = "<group>"; };
+		001055140CB8B451CF675BC1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -36,6 +37,7 @@
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		C6BC4FB63B66F2747D5BE349 /* BridgeViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeViewController.swift; sourceTree = "<group>"; };
+		D10000000000000000000002 /* FaceIDPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceIDPlugin.swift; sourceTree = "<group>"; };
 		E28465FB6C63AF9FEF86419C /* AppleIntelligencePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleIntelligencePlugin.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -93,6 +95,7 @@
 				E28465FB6C63AF9FEF86419C /* AppleIntelligencePlugin.swift */,
 				C6BC4FB63B66F2747D5BE349 /* BridgeViewController.swift */,
 				D10000000000000000000002 /* FaceIDPlugin.swift */,
+				001055140CB8B451CF675BC1 /* PrivacyInfo.xcprivacy */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -173,6 +176,7 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				4691B6C7DFE2F5E3389AEA39 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -109,3 +109,8 @@ label input, label select { margin-top: 2px; }
 .settings h3 { color: #F05A28; font-size: 16px; }
 .settings .card .card { box-shadow: none; padding: 0; }
 button:disabled { opacity: .55; }
+
+.tax-export { margin: 24px 0 16px; padding-top: 16px; border-top: 2px solid #F05A28; }
+.tax-export h3 { font-size: 21px; margin: 0 0 8px; }
+.export-buttons { display: grid; gap: 10px; margin: 12px 0; }
+.export-buttons button { width: 100%; text-align: left; }

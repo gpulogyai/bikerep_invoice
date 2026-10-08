@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { CHARGE_KEYS } from "../types";
+import NumberInput from "./NumberInput";
 import type { Invoice, LineItem, PartCondition } from "../types";
 import { CHARGE_LABELS, emptyLineItem } from "../invoice";
 import { COMMON_ACCESSORIES, COMMON_PARTS, joinBike, splitBike, typedBikeModel } from "../catalog";
@@ -315,13 +316,12 @@ export default function InvoiceForm({ invoice, setInvoice, lists, onLists }: Pro
   const money = (label: string, value: number, onChange: (n: number) => void) => (
     <label>
       {label}
-      <input
-        type="number"
+      <NumberInput
         inputMode="decimal"
         min="0"
         step="0.01"
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onValueChange={onChange}
       />
     </label>
   );
@@ -492,23 +492,21 @@ export default function InvoiceForm({ invoice, setInvoice, lists, onLists }: Pro
                 value={li.partNo}
                 onChange={(e) => setLine(li.id, { partNo: e.target.value })}
               />
-              <input
+              <NumberInput
                 aria-label={`Item ${i + 1} quantity`}
-                type="number"
                 inputMode="decimal"
                 min="0"
                 step="1"
                 value={li.quantity}
-                onChange={(e) => setLine(li.id, { quantity: Number(e.target.value) })}
+                onValueChange={(quantity) => setLine(li.id, { quantity })}
               />
-              <input
+              <NumberInput
                 aria-label={`Item ${i + 1} unit price`}
-                type="number"
                 inputMode="decimal"
                 min="0"
                 step="0.01"
                 value={li.unitPrice}
-                onChange={(e) => setLine(li.id, { unitPrice: Number(e.target.value) })}
+                onValueChange={(unitPrice) => setLine(li.id, { unitPrice })}
               />
               <select
                 aria-label={`Item ${i + 1} condition`}

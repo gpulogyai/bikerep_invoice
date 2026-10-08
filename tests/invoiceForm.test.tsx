@@ -8,7 +8,7 @@ vi.mock("../src/faceID", () => ({
   faceIDStatus: vi.fn(async () => ({ available: true, reason: "" })),
   authenticateIncome: vi.fn(async () => undefined),
 }));
-import { loadInvoices } from "../src/invoice";
+import { loadInvoices, saveOwner } from "../src/invoice";
 
 vi.mock("../src/contacts", () => ({
   canPickContact: () => true,
@@ -27,6 +27,48 @@ const setNumber = async (user: ReturnType<typeof userEvent.setup>, label: string
 };
 
 describe("invoice app", () => {
+  it("lets every numeric field stay empty while replacing zero, then saves numeric values", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByLabelText("Customer requests a written estimate"));
+    for (const label of ["Item 1 quantity", "Item 1 unit price", "Labor", "Misc. merchandise", "Sublet repairs", "Storage fee", "Waste removal", "Tax rate (%)", "Estimated cost / limit"]) {
+      const input = screen.getByLabelText(label);
+      await user.clear(input);
+      expect(input).toHaveValue(null);
+      await user.type(input, "12.5");
+      expect(input).toHaveValue(12.5);
+      await user.tab();
+      expect(input).toHaveValue(12.5);
+    }
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(loadInvoices()[0]).toMatchObject({ labor: 12.5, taxRate: 12.5, estimateAmount: 12.5,
+      lineItems: [{ quantity: 12.5, unitPrice: 12.5 }] });
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    const rate = screen.getByLabelText("Set aside for income tax (%)");
+    await user.clear(rate);
+    expect(rate).toHaveValue(null);
+    await user.type(rate, "25.5");
+    expect(rate).toHaveValue(25.5);
+    expect(JSON.parse(localStorage.getItem("bike-owner")!).incomeTaxRate).toBe(25.5);
+  });
+
+  it("treats a cleared amount as zero on save and resets empty editing state on New", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const labor = screen.getByLabelText("Labor");
+    await user.clear(labor);
+    await user.type(labor, "42");
+    await user.clear(labor);
+    expect(labor).toHaveValue(null);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(loadInvoices()[0].labor).toBe(0);
+    expect(labor).toHaveValue(0);
+    await user.clear(labor);
+    await user.click(screen.getByRole("button", { name: "New" }));
+    expect(screen.getByLabelText("Labor")).toHaveValue(0);
+    expect(screen.getByLabelText("Item 1 quantity")).toHaveValue(1);
+  });
+
   it("adds two bikes, removes the first, and the preview shows the remaining one", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -222,7 +264,8 @@ describe("invoice app", () => {
     expect(within(preview).getByTestId("total")).toHaveTextContent("$72.00");
   });
 
-  it("shows income only after Face ID and keeps tax settings on Settings", async () => {
+  it("shows income only after Face ID when enabled and keeps tax settings on Settings", async () => {
+    saveOwner({ incomeTaxRate: 0, faceIDEnabled: true });
     const user = userEvent.setup();
     render(<App />);
     await user.type(screen.getByLabelText("Phone"), "347 828-5828");

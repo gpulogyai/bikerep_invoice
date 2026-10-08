@@ -1,5 +1,7 @@
 import { useState } from "react";
-import type { Invoice, OwnerSettings } from "../types";
+import type { Invoice, OwnerSettings, ShopInfo } from "../types";
+import TaxExport from "./TaxExport";
+import { DEFAULT_SHOP } from "../invoice";
 import { formatMoney } from "../invoice";
 import { monthlyIncome, periodRange, summarizeIncome } from "../income";
 import type { Period } from "../income";
@@ -8,6 +10,7 @@ import { AnswerView, useAsk } from "./AskBox";
 interface Props {
   invoices: Invoice[];
   owner: OwnerSettings;
+  shop?: ShopInfo;
   onLock?: () => void;
 }
 
@@ -18,7 +21,7 @@ const PERIODS: [Period, string][] = [
   ["all", "All time"],
 ];
 
-export default function IncomePanel({ invoices, owner, onLock }: Props) {
+export default function IncomePanel({ invoices, owner, shop = DEFAULT_SHOP, onLock }: Props) {
   const [period, setPeriod] = useState<Period>("month");
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -145,6 +148,7 @@ export default function IncomePanel({ invoices, owner, onLock }: Props) {
         </table>
       )}
 
+      <TaxExport invoices={invoices} shop={shop} />
       {onLock && <button type="button" className="secondary" onClick={onLock}>Lock now</button>}
     </section>
   );
