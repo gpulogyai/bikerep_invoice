@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../src/App";
+import { authenticateIncome } from "../src/faceID";
+vi.mock("../src/faceID", () => ({
+  supportsNativeFaceID: () => false,
+  faceIDStatus: vi.fn(async () => ({ available: true, reason: "" })),
+  authenticateIncome: vi.fn(async () => undefined),
+}));
 import { loadInvoices } from "../src/invoice";
 
 vi.mock("../src/contacts", () => ({
@@ -117,7 +123,7 @@ describe("invoice app", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("tab", { name: "Shop" }));
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
     await user.type(screen.getByLabelText("Zelle phone or email"), "(408) 569-4378");
     await user.type(screen.getByLabelText("Payment link"), "https://pay.example/nbr?amt={{amount}");
 
@@ -216,37 +222,35 @@ describe("invoice app", () => {
     expect(within(preview).getByTestId("total")).toHaveTextContent("$72.00");
   });
 
-  it("shows the owner income and tax behind a PIN that relocks when leaving the tab", async () => {
+  it("shows income only after Face ID and keeps tax settings on Settings", async () => {
     const user = userEvent.setup();
     render(<App />);
-
     await user.type(screen.getByLabelText("Phone"), "347 828-5828");
     await user.type(screen.getByLabelText("Item 1 description"), "Tires");
     await setNumber(user, "Item 1 unit price", "100");
     await setNumber(user, "Tax rate (%)", "8.25");
     await user.click(screen.getByRole("tab", { name: "Send" }));
     await user.click(screen.getByRole("button", { name: "Mark paid" }));
-
     await user.click(screen.getByRole("tab", { name: "Income" }));
-    const income = screen.getByRole("region", { name: "Income" });
+    expect(screen.queryByRole("region", { name: "Income" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Unlock with Face ID" }));
+    const income = await screen.findByRole("region", { name: "Income" });
     expect(within(income).getByTestId("collected")).toHaveTextContent("$108.25");
     expect(within(income).getByTestId("salesTax")).toHaveTextContent("$8.25");
     expect(within(income).getByTestId("net")).toHaveTextContent("$100.00");
+    expect(screen.queryByLabelText("Set aside for income tax (%)")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.queryByLabelText("Set aside for income tax (%)")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Unlock with Face ID" }));
     await setNumber(user, "Set aside for income tax (%)", "25");
-    expect(within(income).getByTestId("incomeTax")).toHaveTextContent("$25.00");
-
-    await user.type(screen.getByLabelText("Set a PIN to hide this tab"), "4321");
-    await user.click(screen.getByRole("button", { name: "Save PIN" }));
-    await user.click(screen.getByRole("tab", { name: "Edit" }));
     await user.click(screen.getByRole("tab", { name: "Income" }));
-    expect(screen.queryByRole("region", { name: "Income" })).not.toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("Owner PIN"), "1111");
-    await user.click(screen.getByRole("button", { name: "Unlock" }));
-    expect(screen.getByText("Wrong PIN.")).toBeInTheDocument();
-    await user.type(screen.getByLabelText("Owner PIN"), "4321");
-    await user.click(screen.getByRole("button", { name: "Unlock" }));
-    expect(screen.getByTestId("incomeTax")).toHaveTextContent("$25.00");
+    expect(screen.queryByTestId("incomeTax")).not.toBeInTheDocument();
+    vi.mocked(authenticateIncome).mockRejectedValueOnce(new Error("Face ID was cancelled. Income stays locked."));
+    await user.click(screen.getByRole("button", { name: "Unlock with Face ID" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Face ID was cancelled");
+    expect(screen.queryByTestId("incomeTax")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Unlock with Face ID" }));
+    expect(await screen.findByTestId("incomeTax")).toHaveTextContent("$25.00");
   });
 
   it("adds a typed-in brand and model to the pick lists for later invoices", async () => {
@@ -323,7 +327,7 @@ describe("invoice app", () => {
     const picker = screen.getByLabelText("Add part or accessory");
     expect(within(within(picker).getByRole("group", { name: "Added by you" })).getByRole("option", { name: "Bar ends" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Shop" }));
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
     await user.click(screen.getByRole("button", { name: "Remove Bar ends from list" }));
     await user.click(screen.getByRole("tab", { name: "Edit" }));
     expect(within(screen.getByLabelText("Add part or accessory")).queryByRole("option", { name: "Bar ends" })).not.toBeInTheDocument();

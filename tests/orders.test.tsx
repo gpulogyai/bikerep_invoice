@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../src/App";
+vi.mock("../src/faceID", () => ({
+  supportsNativeFaceID: () => false,
+  faceIDStatus: vi.fn(async () => ({ available: true, reason: "" })),
+  authenticateIncome: vi.fn(async () => undefined),
+}));
 import { blankInvoice, emptyLineItem, saveInvoice, normalizeInvoice } from "../src/invoice";
 import { orderForAI, searchOrders, unpaidSummary } from "../src/orders";
 import { askAboutOrders } from "../src/askAI";
@@ -119,7 +124,7 @@ describe("Orders tab", () => {
     expect(screen.queryByLabelText("AI answer")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /#1001 · Jordan Lee/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Shop" }));
+    await user.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.queryByText(/API key/i)).not.toBeInTheDocument();
   });
 
@@ -146,6 +151,7 @@ describe("Income tab Ask", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("tab", { name: "Income" }));
+    await user.click(screen.getByRole("button", { name: "Unlock with Face ID" }));
 
     expect(screen.queryByLabelText("Ask about your income")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ask" }));

@@ -77,8 +77,8 @@ export interface Totals {
 }
 
 export interface OwnerSettings {
-  /** 4+ digit code that hides the Income tab from customers looking at the phone. Empty = no lock. */
-  pin: string;
+  /** Optional screen privacy lock. Off until explicitly enabled in Settings. */
+  faceIDEnabled: boolean;
   /** Share of net income (after sales tax) the owner sets aside for income tax, in percent. */
   incomeTaxRate: number;
 }

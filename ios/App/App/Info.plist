@@ -22,6 +22,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Bike Invoices uses Face ID to protect your shop income and owner settings.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Bike Invoices uses your contacts to fill in a customer's name, phone and address.</string>
 	<key>UIApplicationSceneManifest</key>

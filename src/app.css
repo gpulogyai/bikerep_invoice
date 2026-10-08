@@ -103,3 +103,9 @@ label input, label select { margin-top: 2px; }
 .searchask button:disabled, .askincome button:disabled { background: #CFCBE0; }
 .answer { background: #F6F5FB; border-left: 3px solid #F05A28; border-radius: 8px; padding: 10px 12px; margin: 8px 0 12px; }
 .answer p { margin: 0 0 8px; white-space: pre-wrap; }
+
+.settings { display: grid; gap: 12px; }
+.settings h2 { margin: 0 0 12px; font-size: 22px; }
+.settings h3 { color: #F05A28; font-size: 16px; }
+.settings .card .card { box-shadow: none; padding: 0; }
+button:disabled { opacity: .55; }

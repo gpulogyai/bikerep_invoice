@@ -5,6 +5,7 @@ import Capacitor
 class BridgeViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(AppleIntelligencePlugin())
+        bridge?.registerPluginInstance(FaceIDPlugin())
         #if DEBUG
         let question = ProcessInfo.processInfo.environment["ASK_SELF_TEST"]
         selfTestLog("ASK-SELFTEST launched, question given: \(question != nil)")

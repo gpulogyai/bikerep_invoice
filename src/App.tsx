@@ -20,13 +20,15 @@ import {
 import InvoiceForm from "./components/InvoiceForm";
 import InvoicePreview from "./components/InvoicePreview";
 import SendPanel from "./components/SendPanel";
-import ShopSettings from "./components/ShopSettings";
+import SettingsPanel from "./components/SettingsPanel";
+import FaceIDGate from "./components/FaceIDGate";
+import { useIncomeAccess } from "./useIncomeAccess";
 import IncomePanel from "./components/IncomePanel";
 import OrdersPanel from "./components/OrdersPanel";
 import { loadLists, saveLists } from "./customLists";
 import type { CustomLists } from "./customLists";
 
-type Tab = "edit" | "send" | "orders" | "income" | "shop";
+type Tab = "edit" | "send" | "orders" | "income" | "settings";
 
 export default function App() {
   const [saved, setSaved] = useState<Invoice[]>(() => loadInvoices());
@@ -58,12 +60,12 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("edit");
   const [message, setMessage] = useState("");
   const [owner, setOwner] = useState<OwnerSettings>(() => loadOwner());
-  const [ownerUnlocked, setOwnerUnlocked] = useState(false);
+  const access = useIncomeAccess();
   const [lists, setLists] = useState<CustomLists>(() => loadLists());
 
   const openTab = (t: Tab) => {
-    // Leaving the Income tab locks it again so a customer handed the phone can't open it.
-    if (t !== "income") setOwnerUnlocked(false);
+    // Each owner page requires a fresh authentication after leaving it.
+    if (t !== tab) access.lock();
     setTab(t);
   };
 
@@ -113,13 +115,13 @@ export default function App() {
     saveLists(next);
   };
   const onOwner = (next: OwnerSettings) => {
-    setOwner(next);
     saveOwner(next);
+    setOwner(next);
   };
 
   const labels: Record<Tab, string> = { edit: "Edit", send: "Send", orders: `Orders (${saved.length})`,
     income: "Income",
-    shop: "Shop",
+    settings: "Settings",
   };
 
   return (
@@ -190,23 +192,11 @@ export default function App() {
             }}
           />
         )}
-        {tab === "income" && (
-          <IncomePanel
-            invoices={saved}
-            owner={owner}
-            onOwner={onOwner}
-            unlocked={ownerUnlocked}
-            onUnlock={setOwnerUnlocked}
-          />
-        )}
-        {tab === "shop" && <>
-          <ShopSettings shop={shop} onChange={onShop} lists={lists} onLists={onLists} />
-          <section className="card"><h3>Invoice backup</h3>
-            <p>These records live on this device, not GitHub. Export regularly. Import merges non-overlapping records; it never overwrites existing invoices.</p>
-            <button type="button" onClick={backup}>Export invoice backup</button>
-            <label>Import invoice backup <input aria-label="Import invoice backup" type="file" accept="application/json,.json" onChange={e => { void importBackup(e.target.files?.[0]); e.target.value = ""; }} /></label>
-          </section>
-        </>}
+        {tab === "income" && (!owner.faceIDEnabled || access.unlocked ? (
+          <IncomePanel invoices={saved} owner={owner} onLock={owner.faceIDEnabled ? access.lock : undefined} />
+        ) : <FaceIDGate authenticating={access.authenticating} error={access.error} onUnlock={() => void access.unlock()} />)}
+        {tab === "settings" && <SettingsPanel shop={shop} onShop={onShop} lists={lists} onLists={onLists}
+          owner={owner} onOwner={onOwner} access={access} onBackup={backup} onImport={importBackup} />}
       </fieldset>
       </main>
 

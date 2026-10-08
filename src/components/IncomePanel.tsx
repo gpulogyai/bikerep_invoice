@@ -8,9 +8,7 @@ import { AnswerView, useAsk } from "./AskBox";
 interface Props {
   invoices: Invoice[];
   owner: OwnerSettings;
-  onOwner: (owner: OwnerSettings) => void;
-  unlocked: boolean;
-  onUnlock: (unlocked: boolean) => void;
+  onLock?: () => void;
 }
 
 const PERIODS: [Period, string][] = [
@@ -20,47 +18,11 @@ const PERIODS: [Period, string][] = [
   ["all", "All time"],
 ];
 
-export default function IncomePanel({ invoices, owner, onOwner, unlocked, onUnlock }: Props) {
-  const [entered, setEntered] = useState("");
-  const [wrong, setWrong] = useState(false);
-  const [newPin, setNewPin] = useState("");
+export default function IncomePanel({ invoices, owner, onLock }: Props) {
   const [period, setPeriod] = useState<Period>("month");
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const { asking, answer, error, ask, clear } = useAsk(invoices, incomeContext(invoices, owner.incomeTaxRate));
-
-  if (owner.pin && !unlocked) {
-    return (
-      <form
-        className="card"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const ok = entered === owner.pin;
-          setWrong(!ok);
-          setEntered("");
-          if (ok) onUnlock(true);
-        }}
-      >
-        <fieldset>
-          <legend>Owner only</legend>
-          <div className="pin">
-            <label>
-              Owner PIN
-              <input
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                value={entered}
-                onChange={(e) => setEntered(e.target.value)}
-              />
-            </label>
-            <button type="submit">Unlock</button>
-          </div>
-          {wrong && <p className="warn">Wrong PIN.</p>}
-        </fieldset>
-      </form>
-    );
-  }
 
   const { from, to } = periodRange(period);
   const s = summarizeIncome(invoices, from, to, owner.incomeTaxRate);
@@ -143,17 +105,7 @@ export default function IncomePanel({ invoices, owner, onOwner, unlocked, onUnlo
       </dl>
 
       <h3>Income tax</h3>
-      <label>
-        Set aside for income tax (%)
-        <input
-          type="number"
-          inputMode="decimal"
-          min="0"
-          step="0.5"
-          value={owner.incomeTaxRate}
-          onChange={(e) => onOwner({ ...owner, incomeTaxRate: Number(e.target.value) })}
-        />
-      </label>
+      <p className="hint">Change the income tax set-aside rate in Settings.</p>
       <dl className="totals">
         <Row label={`Set aside (${owner.incomeTaxRate || 0}% of net sales)`} value={s.incomeTax} testId="incomeTax" />
         <Row label="Left after income tax" value={s.afterIncomeTax} testId="afterIncomeTax" />
@@ -193,40 +145,7 @@ export default function IncomePanel({ invoices, owner, onOwner, unlocked, onUnlo
         </table>
       )}
 
-      <h3>Owner PIN</h3>
-      <div className="pin">
-        <label>
-          {owner.pin ? "Change PIN" : "Set a PIN to hide this tab"}
-          <input
-            type="password"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="4+ digits"
-            value={newPin}
-            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={newPin.length < 4}
-          onClick={() => {
-            onOwner({ ...owner, pin: newPin });
-            setNewPin("");
-          }}
-        >
-          Save PIN
-        </button>
-      </div>
-      {owner.pin && (
-        <div className="row after">
-          <button type="button" className="secondary" onClick={() => onUnlock(false)}>
-            Lock now
-          </button>
-          <button type="button" className="secondary" onClick={() => onOwner({ ...owner, pin: "" })}>
-            Remove PIN
-          </button>
-        </div>
-      )}
+      {onLock && <button type="button" className="secondary" onClick={onLock}>Lock now</button>}
     </section>
   );
 }

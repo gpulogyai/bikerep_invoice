@@ -280,17 +280,27 @@ export function saveShop(shop: ShopInfo, storage: Storage = localStorage): void 
   storage.setItem(SHOP_KEY, JSON.stringify(shop));
 }
 
-export const DEFAULT_OWNER: OwnerSettings = { pin: "", incomeTaxRate: 0 };
+export const DEFAULT_OWNER: OwnerSettings = { incomeTaxRate: 0, faceIDEnabled: false };
 
 export function loadOwner(storage: Storage = localStorage): OwnerSettings {
   try {
     const raw = storage.getItem(OWNER_KEY);
-    return { ...DEFAULT_OWNER, ...(raw ? (JSON.parse(raw) as Partial<OwnerSettings>) : {}) };
+    const value: unknown = raw ? JSON.parse(raw) : null;
+    const rate = value && typeof value === "object" && "incomeTaxRate" in value ? value.incomeTaxRate : 0;
+    const owner: OwnerSettings = {
+      incomeTaxRate: typeof rate === "number" && Number.isFinite(rate) ? Math.max(0, Math.min(100, rate)) : 0,
+      faceIDEnabled: Boolean(value && typeof value === "object" && "faceIDEnabled" in value && value.faceIDEnabled === true),
+    };
+    // Drop the obsolete plaintext PIN without changing invoices or the owner tax rate.
+    if (value && typeof value === "object" && "pin" in value) {
+      try { saveOwner(owner, storage); } catch { /* Preserve the rate if storage is temporarily read-only. The old PIN is never used. */ }
+    }
+    return owner;
   } catch {
     return DEFAULT_OWNER;
   }
 }
 
 export function saveOwner(owner: OwnerSettings, storage: Storage = localStorage): void {
-  storage.setItem(OWNER_KEY, JSON.stringify(owner));
+  storage.setItem(OWNER_KEY, JSON.stringify({ incomeTaxRate: owner.incomeTaxRate, faceIDEnabled: owner.faceIDEnabled === true }));
 }
